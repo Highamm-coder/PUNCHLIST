@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Punch List</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f0e8;
+      --surface: #faf7f2;
+      --border: #d4cbbf;
+      --border-light: #e8e0d4;
+      --text-primary: #1a1714;
+      --text-secondary: #7a6f63;
+      --text-done: #b0a498;
+      --accent: #c8401a;
+      --accent-hover: #a83214;
+      --check-bg: #1a1714;
+      --check-hover: #3a3430;
+      --font-mono: 'Space Mono', monospace;
+      --font-sans: 'DM Sans', sans-serif;
+      --radius: 3px;
+    }
+
+    body {
+      background: var(--bg);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 48px 16px 80px;
+    }
+
+    #root { width: 100%; max-width: 560px; }
+
+    /* ── Header ── */
+    .pl-header {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .pl-title {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-primary);
+    }
+    .pl-count {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      letter-spacing: 0.06em;
+    }
+
+    /* ── Add form ── */
+    .pl-add-form {
+      display: flex;
+      gap: 0;
+      margin-bottom: 24px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      transition: border-color 0.15s;
+    }
+    .pl-add-form:focus-within {
+      border-color: var(--text-primary);
+    }
+    .pl-add-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 12px 14px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+    .pl-add-input::placeholder {
+      color: var(--text-secondary);
+    }
+    .pl-add-btn {
+      background: var(--text-primary);
+      border: none;
+      border-radius: 0 1px 1px 0;
+      color: var(--bg);
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 700;
+      padding: 0 18px;
+      cursor: pointer;
+      transition: background 0.12s;
+      line-height: 1;
+    }
+    .pl-add-btn:hover { background: var(--check-hover); }
+    .pl-add-btn:active { transform: scale(0.97); }
+
+    /* ── Filters ── */
+    .pl-filters {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+    }
+    .pl-filter-btn {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 5px 10px;
+      border-radius: var(--radius);
+      border: 1.5px solid transparent;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+    .pl-filter-btn:hover { color: var(--text-primary); border-color: var(--border); }
+    .pl-filter-btn.active {
+      color: var(--text-primary);
+      border-color: var(--text-primary);
+      background: var(--surface);
+    }
+
+    /* ── Task list ── */
+    .pl-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .pl-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 13px 0;
+      border-bottom: 1px solid var(--border-light);
+      animation: fadeSlideIn 0.18s ease;
+    }
+    .pl-item:first-child { border-top: 1px solid var(--border-light); }
+
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes strikeThrough {
+      from { width: 0%; }
+      to   { width: 100%; }
+    }
+
+    /* Checkbox */
+    .pl-check {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      border: 1.5px solid var(--border);
+      border-radius: 2px;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.12s;
+      margin-top: 1px;
+    }
+    .pl-check:hover { border-color: var(--check-bg); }
+    .pl-check.checked {
+      background: var(--check-bg);
+      border-color: var(--check-bg);
+    }
+    .pl-check svg { display: none; }
+    .pl-check.checked svg { display: block; }
+
+    /* Task text */
+    .pl-task-body { flex: 1; min-width: 0; }
+    .pl-task-text {
+      font-size: 14px;
+      color: var(--text-primary);
+      line-height: 1.45;
+      position: relative;
+      display: inline;
+    }
+    .pl-task-text::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      height: 1.5px;
+      background: var(--text-done);
+      width: 0%;
+      transition: none;
+    }
+    .pl-item.done .pl-task-text {
+      color: var(--text-done);
+    }
+    .pl-item.done .pl-task-text::after {
+      width: 100%;
+      animation: strikeThrough 0.25s ease forwards;
+    }
+
+    .pl-task-meta {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-secondary);
+      margin-top: 3px;
+      letter-spacing: 0.04em;
+    }
+
+    /* Delete btn */
+    .pl-delete {
+      flex-shrink: 0;
+      background: transparent;
+      border: none;
+      color: var(--border);
+      font-size: 16px;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 2px;
+      line-height: 1;
+      transition: color 0.12s;
+      margin-top: 1px;
+      opacity: 0;
+    }
+    .pl-item:hover .pl-delete { opacity: 1; }
+    .pl-delete:hover { color: var(--accent); }
+
+    /* ── Empty state ── */
+    .pl-empty {
+      text-align: center;
+      padding: 48px 0 32px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      letter-spacing: 0.08em;
+    }
+    .pl-empty-mark {
+      font-size: 28px;
+      display: block;
+      margin-bottom: 12px;
+      opacity: 0.35;
+    }
+
+    /* ── Footer ── */
+    .pl-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+    .pl-remaining {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-secondary);
+      letter-spacing: 0.08em;
+    }
+    .pl-clear-btn {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 4px 0;
+      transition: color 0.12s;
+    }
+    .pl-clear-btn:hover { color: var(--accent); }
+
+    /* ── Progress bar ── */
+    .pl-progress-wrap {
+      height: 2px;
+      background: var(--border-light);
+      border-radius: 1px;
+      margin-bottom: 28px;
+      overflow: hidden;
+    }
+    .pl-progress-bar {
+      height: 100%;
+      background: var(--check-bg);
+      border-radius: 1px;
+      transition: width 0.4s ease;
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const STORAGE_KEY = 'punchlist_v1';
+
+function loadTasks() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [
+      { id: 1, text: 'Inspect foundation cracks', done: false, added: Date.now() - 86400000 * 2 },
+      { id: 2, text: 'Fix leaking roof flashing', done: true, added: Date.now() - 86400000 },
+      { id: 3, text: 'Replace broken window seal', done: false, added: Date.now() - 3600000 },
+    ];
+  } catch { return []; }
+}
+
+function saveTasks(tasks) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); } catch {}
+}
+
+function formatDate(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 86400000);
+  if (diff === 0) return 'today';
+  if (diff === 1) return 'yesterday';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+let nextId = Date.now();
+
+function PunchList({ tweaks }) {
+  const [tasks, setTasks] = useState(loadTasks);
+  const [input, setInput] = useState('');
+  const [filter, setFilter] = useState('all');
+  const inputRef = useRef(null);
+
+  useEffect(() => { saveTasks(tasks); }, [tasks]);
+
+  const addTask = () => {
+    const text = input.trim();
+    if (!text) return;
+    setTasks(prev => [{ id: nextId++, text, done: false, added: Date.now() }, ...prev]);
+    setInput('');
+    inputRef.current?.focus();
+  };
+
+  const toggle = (id) => setTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+  const remove = (id) => setTasks(prev => prev.filter(t => t.id !== id));
+  const clearDone = () => setTasks(prev => prev.filter(t => !t.done));
+
+  const filtered = tasks.filter(t =>
+    filter === 'all' ? true : filter === 'open' ? !t.done : t.done
+  );
+
+  const doneCount = tasks.filter(t => t.done).length;
+  const openCount = tasks.filter(t => !t.done).length;
+  const progress = tasks.length === 0 ? 0 : Math.round((doneCount / tasks.length) * 100);
+
+  const showMeta = tweaks?.showDates !== false;
+
+  return (
+    <div>
+      <div className="pl-header">
+        <span className="pl-title">Punch List</span>
+        <span className="pl-count">
+          {tasks.length === 0 ? 'no items' : `${doneCount}/${tasks.length} done`}
+        </span>
+      </div>
+
+      {tasks.length > 0 && (
+        <div className="pl-progress-wrap">
+          <div className="pl-progress-bar" style={{ width: `${progress}%` }}></div>
+        </div>
+      )}
+
+      <div className="pl-add-form">
+        <input
+          ref={inputRef}
+          className="pl-add-input"
+          placeholder="Add a task…"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && addTask()}
+          maxLength={200}
+        />
+        <button className="pl-add-btn" onClick={addTask} aria-label="Add task">+</button>
+      </div>
+
+      {tasks.length > 0 && (
+        <div className="pl-filters">
+          {['all', 'open', 'done'].map(f => (
+            <button
+              key={f}
+              className={`pl-filter-btn${filter === f ? ' active' : ''}`}
+              onClick={() => setFilter(f)}
+            >
+              {f === 'all' ? `All ${tasks.length}` : f === 'open' ? `Open ${openCount}` : `Done ${doneCount}`}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="pl-list">
+        {filtered.length === 0 ? (
+          <div className="pl-empty">
+            <span className="pl-empty-mark">✓</span>
+            {filter === 'done' ? 'Nothing completed yet' : filter === 'open' ? 'All items complete' : 'Your list is empty'}
+          </div>
+        ) : filtered.map(task => (
+          <div key={task.id} className={`pl-item${task.done ? ' done' : ''}`}>
+            <div
+              className={`pl-check${task.done ? ' checked' : ''}`}
+              onClick={() => toggle(task.id)}
+              role="checkbox"
+              aria-checked={task.done}
+              tabIndex={0}
+              onKeyDown={e => e.key === ' ' && toggle(task.id)}
+            >
+              <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+                <path d="M1 4L4 7.5L10 1" stroke="#f5f0e8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <div className="pl-task-body">
+              <span className="pl-task-text">{task.text}</span>
+              {showMeta && (
+                <div className="pl-task-meta">added {formatDate(task.added)}</div>
+              )}
+            </div>
+            <button className="pl-delete" onClick={() => remove(task.id)} aria-label="Remove task">×</button>
+          </div>
+        ))}
+      </div>
+
+      {tasks.length > 0 && (
+        <div className="pl-footer">
+          <span className="pl-remaining">
+            {openCount === 0 ? 'All done ✓' : `${openCount} item${openCount !== 1 ? 's' : ''} remaining`}
+          </span>
+          {doneCount > 0 && (
+            <button className="pl-clear-btn" onClick={clearDone}>Clear done</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const TWEAK_DEFAULTS = {
+  "accentColor": "#c8401a",
+  "showDates": true,
+  "theme": "paper"
+};
+
+function App() {
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  const theme = tweaks.theme || 'paper';
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'paper') {
+      root.style.setProperty('--bg', '#f5f0e8');
+      root.style.setProperty('--surface', '#faf7f2');
+      root.style.setProperty('--border', '#d4cbbf');
+      root.style.setProperty('--border-light', '#e8e0d4');
+      root.style.setProperty('--text-primary', '#1a1714');
+      root.style.setProperty('--text-secondary', '#7a6f63');
+      root.style.setProperty('--text-done', '#b0a498');
+      root.style.setProperty('--check-bg', '#1a1714');
+      root.style.setProperty('--check-hover', '#3a3430');
+    } else if (theme === 'dark') {
+      root.style.setProperty('--bg', '#141210');
+      root.style.setProperty('--surface', '#1e1c1a');
+      root.style.setProperty('--border', '#3a3530');
+      root.style.setProperty('--border-light', '#2a2826');
+      root.style.setProperty('--text-primary', '#f0ebe2');
+      root.style.setProperty('--text-secondary', '#7a7068');
+      root.style.setProperty('--text-done', '#4a4440');
+      root.style.setProperty('--check-bg', '#f0ebe2');
+      root.style.setProperty('--check-hover', '#cfc8be');
+    } else if (theme === 'white') {
+      root.style.setProperty('--bg', '#ffffff');
+      root.style.setProperty('--surface', '#fafafa');
+      root.style.setProperty('--border', '#e0e0e0');
+      root.style.setProperty('--border-light', '#f0f0f0');
+      root.style.setProperty('--text-primary', '#111111');
+      root.style.setProperty('--text-secondary', '#888888');
+      root.style.setProperty('--text-done', '#bbbbbb');
+      root.style.setProperty('--check-bg', '#111111');
+      root.style.setProperty('--check-hover', '#333333');
+    }
+  }, [theme]);
+
+  return (
+    <>
+      <PunchList tweaks={tweaks} />
+      <TweaksPanel>
+        <TweakSection label="Appearance" />
+        <TweakRadio label="Theme" value={tweaks.theme} onChange={v => setTweak('theme', v)}
+          options={['paper', 'dark', 'white']} />
+        <TweakToggle label="Show dates" value={tweaks.showDates} onChange={v => setTweak('showDates', v)} />
+      </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
